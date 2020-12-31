@@ -11,7 +11,7 @@ It works with any API function that returns a Promise.
 ## Install
 
 ```
-$ npm i p-ratelimit
+$ npm i @rexxars/p-ratelimit
 ```
 
 ## What’s different
@@ -27,6 +27,14 @@ $ npm i p-ratelimit
   - **p-ratelimit** requires minimal modification to your existing code.
 - **Made for Promises and TypeScript friendly**
   - A rate-limited function returns the same Promise type as the original function.
+
+## Changes in @rexxars-fork
+
+- Targets ES5 - replaces some of the internal uses of ES6 classes with functions/closures
+- Removes redis quota manager because of the more browser-focused target
+- Removes some internal functions which were not used, reducing bundle size
+
+See [https://github.com/natesilva/p-ratelimit](natesilva) for the original version!
 
 ## Example
 
