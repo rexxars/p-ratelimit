@@ -23,20 +23,20 @@ function mockApi(sleepTime: number) {
   return fn;
 }
 
-test('can construct from a Quota object', async t => {
+test('can construct from a Quota object', async (t) => {
   const quota: Quota = { concurrency: 2 };
   const rateLimit = pRateLimit(quota);
   t.truthy(rateLimit);
 });
 
-test('can construct from a QuotaManager object', async t => {
+test('can construct from a QuotaManager object', async (t) => {
   const quota: Quota = { concurrency: 2 };
   const qm = new QuotaManager(quota);
   const rateLimit = pRateLimit(qm);
   t.truthy(rateLimit);
 });
 
-test('concurrency is enforced', async t => {
+test('concurrency is enforced', async (t) => {
   const quota: Quota = { concurrency: 2 };
   const rateLimit = pRateLimit(quota);
 
@@ -47,7 +47,7 @@ test('concurrency is enforced', async t => {
   const promises = [
     rateLimit(() => api()), // 0-500 ms
     rateLimit(() => api()), // 0-500 ms
-    rateLimit(() => api()) // 500-1000 ms
+    rateLimit(() => api()), // 500-1000 ms
   ];
 
   while (true) {
@@ -64,7 +64,7 @@ test('concurrency is enforced', async t => {
   }
 });
 
-test('rate limits are enforced', async t => {
+test('rate limits are enforced', async (t) => {
   const quota: Quota = { interval: 500, rate: 3 };
   const quotaManager = new QuotaManager(quota);
   const rateLimit = pRateLimit(quotaManager);
@@ -78,7 +78,7 @@ test('rate limits are enforced', async t => {
     rateLimit(() => api()), // 0-500 ms
     rateLimit(() => api()), // 0-500 ms
     rateLimit(() => api()), // 500-1000 ms
-    rateLimit(() => api()) // 500-1000 ms
+    rateLimit(() => api()), // 500-1000 ms
   ];
 
   while (true) {
@@ -98,7 +98,7 @@ test('rate limits are enforced', async t => {
   }
 });
 
-test('combined rate limits and concurrency are enforced', async t => {
+test('combined rate limits and concurrency are enforced', async (t) => {
   const quota: Quota = { interval: 1000, rate: 3, concurrency: 2 };
   const quotaManager = new QuotaManager(quota);
   const rateLimit = pRateLimit(quotaManager);
@@ -112,7 +112,7 @@ test('combined rate limits and concurrency are enforced', async t => {
     rateLimit(() => api()), // 0-500 ms
     rateLimit(() => api()), // 500-1000 ms
     rateLimit(() => api()), // 1000-1500 ms
-    rateLimit(() => api()) // 1000-1500 ms
+    rateLimit(() => api()), // 1000-1500 ms
   ];
 
   while (true) {
@@ -146,14 +146,14 @@ test('can handle API calls that reject', async (t) => {
     rateLimit(() => api(new Error())),
     rateLimit(() => api()),
     rateLimit(() => api(new Error())),
-    rateLimit(() => api())
+    rateLimit(() => api()),
   ];
 
   await t.throwsAsync(Promise.all(promises));
 
   // wait for them all to complete (rejected or not)
   await Promise.all(
-    promises.map(async p => {
+    promises.map(async (p) => {
       try {
         await p;
       } catch {
@@ -166,12 +166,12 @@ test('can handle API calls that reject', async (t) => {
   t.is(api['fulfillCount'], 3, '3 Promises were fulfilled');
 });
 
-test('API calls that wait too long are rejected', async t => {
+test('API calls that wait too long are rejected', async (t) => {
   const quota: Quota = {
     interval: 1000,
     rate: 1,
     concurrency: 1,
-    maxDelay: 500
+    maxDelay: 500,
   };
   const rateLimit = pRateLimit(quota);
 
@@ -184,7 +184,7 @@ test('API calls that wait too long are rejected', async t => {
   await t.throwsAsync(fn2, { instanceOf: RateLimitTimeoutError });
 });
 
-test('Setting maxDelay to 0 disables maxDelay rejection', async t => {
+test('Setting maxDelay to 0 disables maxDelay rejection', async (t) => {
   const quota: Quota = { interval: 1000, rate: 1, concurrency: 1, maxDelay: 0 };
   const rateLimit = pRateLimit(quota);
 
@@ -197,12 +197,12 @@ test('Setting maxDelay to 0 disables maxDelay rejection', async t => {
   await t.notThrowsAsync(fn2);
 });
 
-test('Continues running the queue after a maxDelay timeout', async t => {
+test('Continues running the queue after a maxDelay timeout', async (t) => {
   const quota: Quota = {
     interval: 1000,
     rate: 1,
     concurrency: 1,
-    maxDelay: 500
+    maxDelay: 500,
   };
   const rateLimit = pRateLimit(quota);
 
@@ -217,7 +217,7 @@ test('Continues running the queue after a maxDelay timeout', async t => {
   await t.throwsAsync(fn3, { instanceOf: RateLimitTimeoutError });
 });
 
-test.serial('Passing no quota is a no-op', async t => {
+test.serial('Passing no quota is a no-op', async (t) => {
   const consoleWarn = td.replace(console, 'warn');
   try {
     // TypeScript won’t allow this but it’s possible in JavaScript
@@ -236,7 +236,7 @@ test.serial('Passing no quota is a no-op', async t => {
   }
 });
 
-test.serial('Passing no quota prints a console warning', async t => {
+test.serial('Passing no quota prints a console warning', async (t) => {
   const consoleWarn = td.replace(console, 'warn');
   try {
     // TypeScript won’t allow this but it’s possible in JavaScript
@@ -250,7 +250,7 @@ test.serial('Passing no quota prints a console warning', async t => {
   }
 });
 
-test('Using an empty quota is a no-op', async t => {
+test('Using an empty quota is a no-op', async (t) => {
   const quota: Quota = {};
   const rateLimit = pRateLimit(quota);
 

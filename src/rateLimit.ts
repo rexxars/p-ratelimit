@@ -48,11 +48,11 @@ export function pRateLimit(
         }
 
         fn()
-          .then(val => {
+          .then((val) => {
             quotaManager.end();
             resolve(val);
           })
-          .catch(err => {
+          .catch((err) => {
             quotaManager.end();
             reject(err);
           })
