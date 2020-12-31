@@ -1,5 +1,5 @@
 {
-  "name": "p-ratelimit",
+  "name": "@rexxars/p-ratelimit",
   "version": "1.0.0",
   "description": "Promise-based utility to make sure you don’t call rate-limited APIs too quickly.",
   "repository": "natesilva/p-ratelimit",
