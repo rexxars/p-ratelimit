@@ -1,9 +1,12 @@
 import test from 'ava';
 import * as td from 'testdouble';
-import { Quota, QuotaManager } from '../src';
+import { Quota, getQuotaManager } from '../src';
 import { pRateLimit } from '../src/rateLimit';
 import { RateLimitTimeoutError } from '../src/rateLimitTimeoutError';
-import { sleep } from '../src/util';
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 function mockApi(sleepTime: number) {
   const fn = async (err: Error = null): Promise<void> => {
@@ -31,7 +34,7 @@ test('can construct from a Quota object', async (t) => {
 
 test('can construct from a QuotaManager object', async (t) => {
   const quota: Quota = { concurrency: 2 };
-  const qm = new QuotaManager(quota);
+  const qm = getQuotaManager(quota);
   const rateLimit = pRateLimit(qm);
   t.truthy(rateLimit);
 });
@@ -66,7 +69,7 @@ test('concurrency is enforced', async (t) => {
 
 test('rate limits are enforced', async (t) => {
   const quota: Quota = { interval: 500, rate: 3 };
-  const quotaManager = new QuotaManager(quota);
+  const quotaManager = getQuotaManager(quota);
   const rateLimit = pRateLimit(quotaManager);
 
   const api = mockApi(500);
@@ -84,13 +87,13 @@ test('rate limits are enforced', async (t) => {
   while (true) {
     const elapsed = Date.now() - startTime;
     if (elapsed < 500) {
-      t.is(quotaManager.activeCount, 3, 'at t < 500, 3 jobs are active');
+      t.is(quotaManager.activeCount(), 3, 'at t < 500, 3 jobs are active');
       t.is(api['fulfillCount'], 0, 'at t < 500, 0 jobs are done');
     } else if (elapsed > 600 && elapsed < 900) {
-      t.is(quotaManager.activeCount, 2, 'at 500 < t < 1000, 2 jobs are active');
+      t.is(quotaManager.activeCount(), 2, 'at 500 < t < 1000, 2 jobs are active');
       t.is(api['fulfillCount'], 3, 'at 500 < t < 1000, 3 jobs are done');
     } else if (elapsed > 1200) {
-      t.is(quotaManager.activeCount, 0, 'at t > 1200, 0 jobs are active');
+      t.is(quotaManager.activeCount(), 0, 'at t > 1200, 0 jobs are active');
       t.is(api['fulfillCount'], 5, 'at t > 1200, 5 jobs are done');
       break;
     }
@@ -100,7 +103,7 @@ test('rate limits are enforced', async (t) => {
 
 test('combined rate limits and concurrency are enforced', async (t) => {
   const quota: Quota = { interval: 1000, rate: 3, concurrency: 2 };
-  const quotaManager = new QuotaManager(quota);
+  const quotaManager = getQuotaManager(quota);
   const rateLimit = pRateLimit(quotaManager);
 
   const api = mockApi(500);
@@ -118,16 +121,16 @@ test('combined rate limits and concurrency are enforced', async (t) => {
   while (true) {
     const elapsed = Date.now() - startTime;
     if (elapsed < 500) {
-      t.is(quotaManager.activeCount, 2, 'at t < 500, 2 jobs are active');
+      t.is(quotaManager.activeCount(), 2, 'at t < 500, 2 jobs are active');
       t.is(api['fulfillCount'], 0, 'at t < 500, 0 jobs are done');
     } else if (elapsed > 600 && elapsed < 900) {
-      t.is(quotaManager.activeCount, 1, 'at 500 < t < 1000, 1 job is active');
+      t.is(quotaManager.activeCount(), 1, 'at 500 < t < 1000, 1 job is active');
       t.is(api['fulfillCount'], 2, 'at 500 < t < 1000, 2 jobs are done');
     } else if (elapsed > 1100 && elapsed < 1400) {
-      t.is(quotaManager.activeCount, 2, 'at 1000 < t < 1500, 2 jobs are active');
+      t.is(quotaManager.activeCount(), 2, 'at 1000 < t < 1500, 2 jobs are active');
       t.is(api['fulfillCount'], 3, 'at 1000 < t < 1500, 3 jobs are done');
     } else if (elapsed > 1700) {
-      t.is(quotaManager.activeCount, 0, 'at t > 1200, 0 jobs are active');
+      t.is(quotaManager.activeCount(), 0, 'at t > 1200, 0 jobs are active');
       t.is(api['fulfillCount'], 5, 'at t > 1200, 5 jobs are done');
       break;
     }
@@ -181,7 +184,7 @@ test('API calls that wait too long are rejected', async (t) => {
   const fn2 = rateLimit(() => api());
 
   await t.notThrowsAsync(fn1);
-  await t.throwsAsync(fn2, { instanceOf: RateLimitTimeoutError });
+  await t.throwsAsync(fn2, { message: 'queue maxDelay timeout exceeded' });
 });
 
 test('Setting maxDelay to 0 disables maxDelay rejection', async (t) => {
@@ -213,8 +216,8 @@ test('Continues running the queue after a maxDelay timeout', async (t) => {
   const fn3 = rateLimit(() => api());
 
   await t.notThrowsAsync(fn1);
-  await t.throwsAsync(fn2, { instanceOf: RateLimitTimeoutError });
-  await t.throwsAsync(fn3, { instanceOf: RateLimitTimeoutError });
+  await t.throwsAsync(fn2, { message: 'queue maxDelay timeout exceeded' });
+  await t.throwsAsync(fn3, { message: 'queue maxDelay timeout exceeded' });
 });
 
 test.serial('Passing no quota is a no-op', async (t) => {
@@ -231,20 +234,6 @@ test.serial('Passing no quota is a no-op', async (t) => {
     }
 
     await t.notThrowsAsync(Promise.all(promises));
-  } finally {
-    td.reset();
-  }
-});
-
-test.serial('Passing no quota prints a console warning', async (t) => {
-  const consoleWarn = td.replace(console, 'warn');
-  try {
-    // TypeScript won’t allow this but it’s possible in JavaScript
-    const rateLimit = (pRateLimit as any)();
-
-    t.notThrows(() =>
-      td.verify(consoleWarn(td.matchers.contains('created with no quota')))
-    );
   } finally {
     td.reset();
   }

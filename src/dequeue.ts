@@ -4,48 +4,51 @@ interface Node<T> {
   next: Node<T>;
 }
 
-export class Dequeue<T> {
-  private _length = 0;
-  private head: Node<T> = undefined;
-  private tail: Node<T> = undefined;
+export function dequeue<T>() {
+  let length = 0;
+  let head: Node<T> = undefined;
+  let tail: Node<T> = undefined;
 
-  get length() {
-    return this._length;
-  }
-
-  push(value: T) {
+  function push(value: T) {
     const newNode: Node<T> = {
       value,
-      prev: this.tail,
+      prev: tail,
       next: undefined,
     };
 
-    if (this._length) {
-      this.tail.next = newNode;
-      this.tail = newNode;
+    if (length) {
+      tail.next = newNode;
+      tail = newNode;
     } else {
-      this.head = this.tail = newNode;
+      head = tail = newNode;
     }
-    this._length++;
+    length++;
   }
 
-  shift(): T {
-    if (!this._length) {
+  function shift(): T {
+    if (!length) {
       return undefined;
     }
-    const result = this.head;
-    this.head = this.head.next;
-    this._length--;
-    if (!this._length) {
-      this.head = this.tail = undefined;
+    const result = head;
+    head = head.next;
+    length--;
+    if (!length) {
+      head = tail = undefined;
     }
     return result.value;
   }
 
-  peekFront(): T {
-    if (this._length) {
-      return this.head.value;
+  function peekFront(): T {
+    if (length) {
+      return head.value;
     }
     return undefined;
   }
+
+  return {
+    length: () => length,
+    push,
+    shift,
+    peekFront,
+  };
 }
