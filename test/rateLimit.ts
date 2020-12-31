@@ -2,7 +2,6 @@ import test from 'ava';
 import * as td from 'testdouble';
 import { Quota, getQuotaManager } from '../src';
 import { pRateLimit } from '../src/rateLimit';
-import { RateLimitTimeoutError } from '../src/rateLimitTimeoutError';
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
